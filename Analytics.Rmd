@@ -1,0 +1,237 @@
+---
+title: "Bakery"
+author: "Simmie"
+date: "3/4/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r}
+#install.packages("reticulate")
+library(reticulate)
+library(tidyverse)
+library(knitr)
+```
+
+
+```{r setup, include=FALSE}
+library(knitr)
+library(reticulate)
+
+use_python("C:\\Users\\SIMIYOUNG\\Anaconda3\\python.exe")
+
+
+
+```
+
+```{python}
+#Load in the python libraries
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sn
+import numpy as np
+import calendar
+import os 
+os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = 'C:/SIMIYOUNG/Anaconda3/Library/plugins/platforms/Qt5Core.dll'
+```
+
+```{python}
+#Read in the bakery dataset
+bakery = r.bakery = pd.read_csv("BreadBasket_DMS.csv")
+```
+
+
+
+```{python}
+#Examine if there are missing variables in the dataset
+bakery.isnull().sum()
+
+#There are no missing variables
+bakery.describe()
+```
+
+```{python}
+#Examine the types of items available
+bakery["Item"].unique()
+
+#Get the items with most transactions
+top_products = bakery.groupby(["Item"])["Transaction"].count()
+
+#Reset the indexing back to a dataframe
+top_products = top_products.reset_index()
+
+#Re arrange values and obtain the top 20 products
+r.top_products = top_products.sort_values(["Transaction"], ascending=False).head(20)
+
+
+
+```
+```{r}
+write.csv(top_products, "top_products.csv")
+```
+
+```{python}
+
+#Generare plot of the most relevant items
+fig,axis=plt.subplots(figsize=(10,6))
+sn.barplot(x = "Item", y = "Transaction", data = top_products)
+axis.set_xticklabels(top_products['Item'],rotation=30,color='green')
+axis.set_xlabel('Items Name',color='green',fontsize=16)
+axis.set_ylabel('Transcations Per Item', fontsize=16,color='green')
+plt.show()
+```
+
+
+```{r}
+#Let us examine the data qualities of the dataset
+str(bakery)
+
+#Load lubridate and wrangle date column
+library(lubridate)
+
+#convert to date the date column
+bakery$Date <- ymd(bakery$Date)
+
+#Time column
+bakery$Time <- hms(bakery$Time)
+
+```
+
+
+```{r}
+str(bakery)
+range(bakery$Date)
+
+
+#mutate year and month column
+bakery %>% 
+  mutate(Year = year(bakery$Date),
+         Month = month(bakery$Date)) %>% 
+  group_by(Year, Month) %>% 
+  count() %>% 
+  unite(date, 1:2, sep = "/") %>% 
+  ggplot(., aes(date, n, fill = n)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Date", y = "Count", title = "Transactions by Month/Year",
+       subtitle = "All Products") +
+  theme(axis.text.x = element_text(angle = 20))
+```
+
+```{r}
+#Lets examine the number of times the best five products is sold by hr
+#We will will use a loop for the plot
+meals <- c("Coffee", "Bread", "Tea", "Cake", "Pastry")
+
+
+lapply(meals, function(x){
+bakery %>% 
+  mutate(hr = hour(Time)) %>% 
+  filter(Item == x) %>% 
+  group_by(hr) %>% 
+  count(Item) %>% 
+    write.csv(paste(x, ".csv", sep = ""))
+        
+})
+```
+
+
+```{r}
+#Find the percentage of all products and see how the top 20 fairs using the 80, 20 rule
+bakery %>% 
+  mutate(total = nrow(bakery)) %>% 
+  group_by(Item, total) %>% 
+  count(sort = T) %>% 
+  mutate(n2 = n/total) %>% 
+  arrange(desc(n2)) %>% 
+  ungroup() %>% 
+  top_n(20) %>% 
+  summarise(n2 = sum(n2))
+
+
+#It appears the top twenty products make up 0.8797727	 percent of the sales
+bakery %>% 
+  count(Item) %>% 
+  write.csv("goods.csv")
+```
+
+
+
+```{python}
+#Get the most sold items by hour
+#Convert date column to datetype
+bakery["Date"] = pd.to_datetime(bakery["Date"])
+bakery["Time"] = pd.to_datetime(bakery["Time"])
+bakery["Year"] = bakery["Date"].dt.year
+bakery["Month"] = bakery["Date"].dt.month
+bakery["Day"] = bakery["Date"].dt.day
+bakery["Weekday"] = bakery["Date"].dt.weekday
+bakery["hour"] = bakery["Time"].dt.hour
+bakery["week_name"] = bakery["Date"].dt.weekday_name
+
+r.bakery2 = bakery
+
+```
+
+```{r}
+lapply(meals, function(x){
+bakery2 %>% 
+  group_by(week_name) %>% 
+  count(Item) %>% 
+  filter(Item == x) %>% 
+  write.csv(paste(x, "_week.csv", sep = ""))
+})
+
+
+
+#OR filter and facet plot so we can view all 
+bakery2 %>% 
+  group_by(week_name) %>% 
+  count(Item) %>% 
+  filter(Item %in% meals) %>% 
+  ggplot(., aes(week_name, n, fill = week_name)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Weekly Sales of top Items") +
+  facet_wrap(~Item, ncol = 2) 
+```
+
+```{r}
+bakery %>% 
+  count(Item, sort = T) %>% 
+  summarise(n = sum(n))
+
+
+
+length(
+  unique(bakery$Transaction)
+)
+
+
+#Aveerage daily transaction
+bakery %>% 
+  distinct(Transaction, .keep_all = T) %>% 
+  group_by(Date) %>% 
+  count(Item) %>% 
+  summarise(n = sum(n)) %>% 
+  ggplot(., aes(Date, n)) +
+  geom_point() +
+  geom_line()
+ 
+bakery %>% 
+  distinct(Transaction, .keep_all = T) %>% 
+  group_by(Date) %>% 
+  count(Item) %>% 
+  summarise(n = sum(n)) %>%
+  ungroup() %>% 
+  summarise(n = mean(n))
+  
+
+bakery2 %>% 
+  distinct(Transaction, .keep_all = T) %>% 
+  group_by(week_name) %>% 
+  count(Item) %>% 
+  summarise(n = round(mean(n))) #%>% 
+  write.csv("week_name.csv")
+
+
+```
