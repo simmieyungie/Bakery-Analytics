@@ -1,0 +1,7 @@
+https://pbpython.com/market-basket-analysis.html
+
+bakery
+https://www.kaggle.com/kalash04/assoc-rule-discovery-cookies-hot-chocolate
+https://www.kaggle.com/pramod7/bakery-data-analysis-and-market-basket-algorithm
+https://www.kaggle.com/povilass/analysis-of-transactions-from-a-bakery-and-apriori
+https://github.com/datacamp/Market-Basket-Analysis-in-python-live-training/blob/master/notebooks/Market-Basket-Analysis-in-Python_Solution.ipynb
